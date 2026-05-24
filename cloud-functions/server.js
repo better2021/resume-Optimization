@@ -11,7 +11,17 @@ const app = express();
 app.use(express.json({ limit: '10mb' }));
 
 /* 直接使用核心函数，避免 Node.js 中 new Response() 的兼容问题 */
-const { optimizeResume, handleSendEmail } = require('./index');
+const { optimizeResume } = require('./ai');
+const { sendEmail } = require('./email');
+
+/* 本地版 handleSendEmail（带参数校验） */
+async function handleSendEmail({ to, subject, text }) {
+  if (!to) throw new Error('收件人邮箱地址不能为空');
+  if (!subject) throw new Error('邮件主题不能为空');
+  if (!text) throw new Error('邮件内容不能为空');
+  await sendEmail({ to, subject, text });
+  return { success: true };
+}
 
 app.post('/api/optimize', async (req, res) => {
   try {
