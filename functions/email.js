@@ -1,8 +1,22 @@
 /**
  * 邮件发送模块 - 使用 Nodemailer 发送简历到指定邮箱
+ *
+ * nodemailer 在 EdgeOne 运行时可能不可用（依赖 net 模块），
+ * 因此采用懒加载，运行时才 require，避免模块初始化阶段崩溃。
  */
 
-const nodemailer = require('nodemailer');
+let nodemailer = null;
+
+function getNodemailer() {
+  if (!nodemailer) {
+    try {
+      nodemailer = require('nodemailer');
+    } catch {
+      throw new Error('邮件模块加载失败：当前环境不支持 SMTP（如 EdgeOne），请改用 HTTP API 发送邮件');
+    }
+  }
+  return nodemailer;
+}
 
 /**
  * 发送邮件
@@ -22,7 +36,8 @@ async function sendEmail({ to, subject, text }) {
     throw new Error('SMTP 未配置，请在 .env 中设置 SMTP_HOST、SMTP_USER、SMTP_PASS');
   }
 
-  const transporter = nodemailer.createTransport({
+  const nm = getNodemailer();
+  const transporter = nm.createTransport({
     host,
     port,
     secure: port === 465,
