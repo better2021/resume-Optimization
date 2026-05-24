@@ -5,8 +5,9 @@
 
 const { optimizeResume } = require('../ai');
 
-async function handleRequest(request) {
+async function onRequestPost(context) {
   try {
+    const request = context.request;
     const body = await request.json();
     const data = await optimizeResume(body);
     return new Response(JSON.stringify({ data, error: null }), {
@@ -20,4 +21,4 @@ async function handleRequest(request) {
   }
 }
 
-module.exports = { handleRequest };
+module.exports = { onRequestPost };

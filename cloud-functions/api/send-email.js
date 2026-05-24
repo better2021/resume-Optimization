@@ -5,8 +5,9 @@
 
 const { sendEmail } = require('../email');
 
-async function handleRequest(request) {
+async function onRequestPost(context) {
   try {
+    const request = context.request;
     const { to, subject, text } = await request.json();
     if (!to) throw new Error('收件人邮箱地址不能为空');
     if (!subject) throw new Error('邮件主题不能为空');
@@ -23,4 +24,4 @@ async function handleRequest(request) {
   }
 }
 
-module.exports = { handleRequest };
+module.exports = { onRequestPost };
