@@ -50,7 +50,7 @@ async function callGLM(systemPrompt, userPrompt, env) {
         { role: 'user', content: userPrompt },
       ],
       temperature: 0.7,
-      max_tokens: 4096,
+      max_tokens: 3072,
     }),
   });
 
@@ -87,7 +87,7 @@ async function callDeepSeek(systemPrompt, userPrompt, env) {
         { role: 'user', content: userPrompt },
       ],
       temperature: 0.7,
-      max_tokens: 4096,
+      max_tokens: 3072,
     }),
   });
 
