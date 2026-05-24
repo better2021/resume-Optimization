@@ -3,13 +3,13 @@
  * 文件路径映射：cloud-functions/api/optimize.js → /api/optimize
  */
 
-const { optimizeResume } = require('../ai');
+import { optimizeResume } from '../ai.js';
 
 async function onRequestPost(context) {
   try {
     const request = context.request;
     const body = await request.json();
-    const data = await optimizeResume(body);
+    const data = await optimizeResume({ ...body, env: context.env });
     return new Response(JSON.stringify({ data, error: null }), {
       headers: { 'Content-Type': 'application/json' },
     });
@@ -21,4 +21,4 @@ async function onRequestPost(context) {
   }
 }
 
-module.exports = { onRequestPost };
+export { onRequestPost };

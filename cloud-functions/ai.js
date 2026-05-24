@@ -4,7 +4,11 @@
 
 const GLM_API_URL = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
 const DEEPSEEK_API_URL = 'https://api.deepseek.com/chat/completions';
-const prompts = require('./prompts');
+import prompts from './prompts.js';
+
+function getEnvValue(env, key) {
+  return env?.[key] || (typeof process !== 'undefined' ? process.env?.[key] : undefined);
+}
 
 /* 不同优化目标的系统提示词 */
 function buildSystemPrompt(goal) {
@@ -27,8 +31,8 @@ function buildUserPrompt(text, jd) {
 }
 
 /* 调用 GLM-4-Flash API */
-async function callGLM(systemPrompt, userPrompt) {
-  const apiKey = process.env.GLM_API_KEY;
+async function callGLM(systemPrompt, userPrompt, env) {
+  const apiKey = getEnvValue(env, 'GLM_API_KEY');
   if (!apiKey) {
     throw new Error('GLM_API_KEY 未配置');
   }
@@ -64,8 +68,8 @@ async function callGLM(systemPrompt, userPrompt) {
 }
 
 /* 调用 DeepSeek API */
-async function callDeepSeek(systemPrompt, userPrompt) {
-  const apiKey = process.env.DEEPSEEK_API_KEY;
+async function callDeepSeek(systemPrompt, userPrompt, env) {
+  const apiKey = getEnvValue(env, 'DEEPSEEK_API_KEY');
   if (!apiKey) {
     throw new Error('DEEPSEEK_API_KEY 未配置');
   }
@@ -138,12 +142,12 @@ function parseResult(content) {
 }
 
 /* 核心优化函数 */
-async function optimizeResume({ text, goal, jd, model }) {
+async function optimizeResume({ text, goal, jd, model, env }) {
   const systemPrompt = buildSystemPrompt(goal);
   const userPrompt = buildUserPrompt(text, jd);
   const caller = model === 'deepseek' ? callDeepSeek : callGLM;
-  const content = await caller(systemPrompt, userPrompt);
+  const content = await caller(systemPrompt, userPrompt, env);
   return parseResult(content);
 }
 
-module.exports = { optimizeResume };
+export { optimizeResume };
