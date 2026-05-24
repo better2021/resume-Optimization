@@ -2,8 +2,11 @@
  * 邮件发送模块 - 使用 Nodemailer 发送简历到指定邮箱
  *
  * nodemailer 在 EdgeOne 运行时可能不可用（依赖 net 模块），
- * 因此采用懒加载，运行时才 require，避免模块初始化阶段崩溃。
+ * 因此采用懒加载，运行时才动态 import，避免模块初始化阶段崩溃。
  */
+
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
 
 let nodemailer = null;
 
@@ -25,12 +28,12 @@ function getNodemailer() {
  * @param {string} text - 邮件正文（简历内容）
  * @returns {Promise<{success: boolean, message: string}>}
  */
-async function sendEmail({ to, subject, text }) {
-  const host = process.env.SMTP_HOST;
-  const port = parseInt(process.env.SMTP_PORT || '587', 10);
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-  const from = process.env.SMTP_FROM || user;
+async function sendEmail({ to, subject, text, env }) {
+  const host = env?.SMTP_HOST || process.env?.SMTP_HOST;
+  const port = parseInt(env?.SMTP_PORT || process.env?.SMTP_PORT || '587', 10);
+  const user = env?.SMTP_USER || process.env?.SMTP_USER;
+  const pass = env?.SMTP_PASS || process.env?.SMTP_PASS;
+  const from = env?.SMTP_FROM || process.env?.SMTP_FROM || user;
 
   if (!host || !user || !pass) {
     throw new Error('SMTP 未配置，请在 .env 中设置 SMTP_HOST、SMTP_USER、SMTP_PASS');
@@ -52,4 +55,4 @@ async function sendEmail({ to, subject, text }) {
   });
 }
 
-module.exports = { sendEmail };
+export { sendEmail };

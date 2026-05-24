@@ -5,14 +5,15 @@
  * 监听端口：3000
  */
 
-require('dotenv').config();
-const express = require('express');
+import 'dotenv/config';
+import express from 'express';
+
 const app = express();
 app.use(express.json({ limit: '10mb' }));
 
-/* 直接使用核心函数，避免 Node.js 中 new Response() 的兼容问题 */
-const { optimizeResume } = require('./ai');
-const { sendEmail } = require('./email');
+/* 直接使用核心函数 */
+import { optimizeResume } from './ai.js';
+import { sendEmail } from './email.js';
 
 /* 本地版 handleSendEmail（带参数校验） */
 async function handleSendEmail({ to, subject, text }) {
