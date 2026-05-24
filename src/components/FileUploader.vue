@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+
+const fileInput = ref<HTMLInputElement | null>(null)
 import * as pdfjsLib from 'pdfjs-dist'
 import mammoth from 'mammoth'
 import type { ParsedResult } from '@/types'
@@ -100,7 +102,7 @@ function onFileInput(e: Event) {
     @dragover="onDragOver"
     @dragleave="onDragLeave"
     @drop="onDrop"
-    @click="$refs.fileInput?.click()"
+    @click="fileInput?.click()"
   >
     <input
       ref="fileInput"
