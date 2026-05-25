@@ -12,7 +12,7 @@ const app = express();
 app.use(express.json({ limit: '10mb' }));
 
 /* 直接使用核心函数 */
-import { optimizeResume } from './ai.js';
+import { optimizeResume, analyzeInterview, generateIntroduction } from './ai.js';
 import { sendEmail } from './email.js';
 
 /* 本地版 handleSendEmail（带参数校验） */
@@ -40,6 +40,41 @@ app.post('/api/send-email', async (req, res) => {
     res.json({ data, error: null });
   } catch (e) {
     console.error('[邮件] 发送失败:', e.message);
+    res.status(500).json({ data: null, error: e.message });
+  }
+});
+
+app.post('/api/interview-analyze', async (req, res) => {
+  try {
+    const { systemPrompt, userPrompt, model } = req.body;
+    if (!systemPrompt || !userPrompt) {
+      throw new Error('缺少 systemPrompt 或 userPrompt 参数');
+    }
+    const data = await analyzeInterview({
+      systemPrompt,
+      userPrompt,
+      model: model || 'glm',
+      env: {},
+    });
+    res.json({ data, error: null });
+  } catch (e) {
+    console.error('[面试分析] 失败:', e.message);
+    res.status(500).json({ data: null, error: e.message });
+  }
+});
+
+app.post('/api/generate-introduction', async (req, res) => {
+  try {
+    const { text, model } = req.body;
+    if (!text) throw new Error('简历内容不能为空');
+    const data = await generateIntroduction({
+      text,
+      model: model || 'glm',
+      env: {},
+    });
+    res.json({ data, error: null });
+  } catch (e) {
+    console.error('[自我介绍] 失败:', e.message);
     res.status(500).json({ data: null, error: e.message });
   }
 });

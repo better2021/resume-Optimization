@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { sendResumeEmail } from '@/api'
+import { sendResumeEmail, generateIntroduction } from '@/api'
 
 const props = defineProps<{
   text: string
   fileName: string
   template?: string
+  model?: string
 }>()
 
 const isExportingWord = ref(false)
@@ -18,6 +19,50 @@ const emailTo = ref('')
 const emailSubject = ref('')
 const isSendingEmail = ref(false)
 const emailSent = ref(false)
+
+/* ── 自我介绍 ── */
+const isGeneratingIntro = ref(false)
+const introductionText = ref('')
+const showIntroDialog = ref(false)
+const introError = ref('')
+
+async function generateSelfIntroduction() {
+  if (!props.text) return
+  isGeneratingIntro.value = true
+  introError.value = ''
+  introductionText.value = ''
+
+  const res = await generateIntroduction({
+    text: props.text,
+    model: (props.model as 'glm' | 'deepseek') || 'glm',
+  })
+
+  if (res.error) {
+    introError.value = res.error
+  } else if (res.data) {
+    introductionText.value = res.data.text
+    showIntroDialog.value = true
+  }
+
+  isGeneratingIntro.value = false
+}
+
+function closeIntroDialog() {
+  showIntroDialog.value = false
+  introductionText.value = ''
+}
+
+function downloadSelfIntro() {
+  const text = introductionText.value
+  if (!text) return
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = '自我介绍.txt'
+  a.click()
+  URL.revokeObjectURL(url)
+}
 
 /* ── 简历文本结构解析 ── */
 const SECTION_HEADINGS = new Set([
@@ -485,6 +530,17 @@ async function doSendEmail() {
   <div class="space-y-2">
     <div class="flex gap-3">
       <button
+        class="flex-1 py-2.5 bg-rose-600 text-white rounded-lg font-medium hover:bg-rose-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+        :disabled="isGeneratingIntro || !text"
+        @click="generateSelfIntroduction"
+      >
+        <span v-if="isGeneratingIntro" class="flex items-center justify-center gap-2">
+          <span class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+          生成中...
+        </span>
+        <span v-else>生成自我介绍</span>
+      </button>
+      <button
         class="flex-1 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         :disabled="isExportingWord || !text"
         @click="downloadWord"
@@ -576,6 +632,47 @@ async function doSendEmail() {
                 </button>
               </div>
             </template>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- 自我介绍展示弹窗 -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div
+          v-if="showIntroDialog"
+          class="fixed inset-0 z-50 flex items-center justify-center"
+          @click.self="closeIntroDialog"
+        >
+          <div class="fixed inset-0 bg-black/50"></div>
+          <div class="relative z-10 w-full max-w-2xl mx-4 bg-white rounded-xl shadow-2xl overflow-hidden">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <h3 class="text-lg font-semibold text-gray-800">📋 面试自我介绍</h3>
+              <button
+                class="text-gray-400 hover:text-gray-600 transition-colors"
+                @click="closeIntroDialog"
+              >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+            <div class="p-6 max-h-[60vh] overflow-y-auto">
+              <div class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap bg-gray-50 rounded-lg p-4">
+                {{ introductionText }}
+              </div>
+            </div>
+            <div class="flex gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50">
+              <button
+                class="flex-1 py-2.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors"
+                @click="closeIntroDialog"
+              >关闭</button>
+              <button
+                class="flex-1 py-2.5 bg-rose-600 text-white rounded-lg font-medium hover:bg-rose-700 transition-colors"
+                @click="downloadSelfIntro"
+              >保存为文本</button>
+            </div>
           </div>
         </div>
       </Transition>

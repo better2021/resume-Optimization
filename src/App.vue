@@ -7,6 +7,10 @@ import ResumeEditor from '@/components/ResumeEditor.vue'
 import OptimizeOptions from '@/components/OptimizeOptions.vue'
 import DiffPreview from '@/components/DiffPreview.vue'
 import DownloadBar from '@/components/DownloadBar.vue'
+import InterviewAssistant from '@/components/InterviewAssistant.vue'
+
+/* 页面导航 */
+const activeTab = ref<'optimizer' | 'interview'>('optimizer')
 
 /* 页面状态 */
 const currentStep = ref<Step>('upload')
@@ -75,7 +79,33 @@ function reset() {
 
 <template>
   <div class="max-w-4xl mx-auto px-4 py-8">
-    <!-- 标题 -->
+    <!-- 浮动左侧导航 -->
+    <div class="fixed left-4 top-1/2 -translate-y-1/2 z-50 flex flex-col bg-white rounded-xl shadow-lg border border-gray-200 p-1.5 gap-1">
+      <button
+        class="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors whitespace-nowrap"
+        :class="activeTab === 'optimizer' ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'"
+        @click="activeTab = 'optimizer'"
+      >
+        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+        <span>简历优化器</span>
+      </button>
+      <button
+        class="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors whitespace-nowrap"
+        :class="activeTab === 'interview' ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'"
+        @click="activeTab = 'interview'"
+      >
+        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+        </svg>
+        <span>面试辅助器</span>
+      </button>
+    </div>
+
+    <!-- 简历优化器 -->
+    <template v-if="activeTab === 'optimizer'">
+      <!-- 标题 -->
     <div class="text-center mb-8">
       <h1 class="text-3xl font-bold text-gray-800">简历优化器</h1>
       <p class="mt-2 text-gray-500">上传简历，AI 帮你优化，快速获取面试机会</p>
@@ -181,7 +211,14 @@ function reset() {
       <DownloadBar
         :text="result.optimizedText"
         :fileName="fileName"
+        :model="selectedModel"
       />
+    </div>
+    </template>
+
+    <!-- 面试辅助器 -->
+    <div v-if="activeTab === 'interview'" class="space-y-6">
+      <InterviewAssistant />
     </div>
   </div>
 </template>

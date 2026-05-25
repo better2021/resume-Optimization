@@ -41,3 +41,31 @@ export interface ParsedResult {
 
 /** 页面步骤 */
 export type Step = 'upload' | 'edit' | 'result'
+
+/** 面试分析 - 面试问题 */
+export interface InterviewQuestion {
+  question: string
+  preparation: string
+  example: string
+}
+
+/** 面试分析结果 */
+export interface InterviewAnalysisResult {
+  summary: string
+  requirements: string[]
+  questions: InterviewQuestion[]
+  suggestions: string[]
+}
+
+/** 面试分析请求参数 */
+export interface InterviewAnalyzeRequest {
+  systemPrompt: string
+  userPrompt: string
+  model: ModelType
+}
+
+/** 生成自我介绍请求参数 */
+export interface GenerateIntroductionRequest {
+  text: string
+  model: ModelType
+}
