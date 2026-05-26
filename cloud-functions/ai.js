@@ -175,10 +175,6 @@ async function analyzeInterview({ systemPrompt, userPrompt, model, env }) {
   /* 去除尾部逗号 */
   jsonStr = jsonStr.replace(/,\s*([}\]])/g, '$1');
 
-  /* DEBUG: 输出 AI 原始返回供排查 */
-  console.error('[DEBUG analyzeInterview] raw content:', content.slice(0, 800));
-  console.error('[DEBUG analyzeInterview] extracted jsonStr:', jsonStr.slice(0, 800));
-
   const parsed = tryParseJSON(jsonStr.trim());
   return {
     summary: parsed.summary || '',
