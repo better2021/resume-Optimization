@@ -2,7 +2,7 @@ import type { ApiResponse, OptimizeRequest, OptimizeResult, InterviewAnalyzeRequ
 
 const API_BASE = '/api'
 /** 请求超时时间（毫秒） */
-const REQUEST_TIMEOUT = 30000
+const REQUEST_TIMEOUT = 60000
 
 /**
  * 调用云函数优化简历

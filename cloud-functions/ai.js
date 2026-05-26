@@ -4,7 +4,7 @@
 
 const GLM_API_URL = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
 const DEEPSEEK_API_URL = 'https://api.deepseek.com/chat/completions';
-const API_TIMEOUT = 30000;
+const API_TIMEOUT = 60000;
 import prompts from './prompts.js';
 
 function getEnvValue(env, key) {
