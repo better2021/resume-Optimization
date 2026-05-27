@@ -11,7 +11,7 @@
  * 本地开发仍使用 server.js（Express）
  */
 
-import { optimizeResume, analyzeInterview, generateIntroduction } from './ai.js';
+import { optimizeResume, analyzeInterview, generateIntroduction, localOptimize } from './ai.js';
 import { sendEmail } from './email.js';
 
 /* 统一成功响应 */
@@ -61,6 +61,13 @@ const routes = {
   'POST /api/generate-introduction': async (body) => {
     if (!body.text) throw new Error('简历内容不能为空');
     const data = await generateIntroduction(body);
+    return ok({ data, error: null });
+  },
+
+  'POST /api/local-optimize': async (body) => {
+    if (!body.text) throw new Error('简历内容不能为空');
+    if (!body.requirement) throw new Error('优化需求不能为空');
+    const data = await localOptimize(body);
     return ok({ data, error: null });
   },
 
