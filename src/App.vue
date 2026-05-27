@@ -8,9 +8,10 @@ import OptimizeOptions from '@/components/OptimizeOptions.vue'
 import DiffPreview from '@/components/DiffPreview.vue'
 import DownloadBar from '@/components/DownloadBar.vue'
 import InterviewAssistant from '@/components/InterviewAssistant.vue'
+import LocalOptimizer from '@/components/LocalOptimizer.vue'
 
 /* 页面导航 */
-const activeTab = ref<'optimizer' | 'interview'>('optimizer')
+const activeTab = ref<'optimizer' | 'interview' | 'local-optimizer'>('optimizer')
 
 /* 页面状态 */
 const currentStep = ref<Step>('upload')
@@ -100,6 +101,16 @@ function reset() {
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
         </svg>
         <span>面试辅助器</span>
+      </button>
+      <button
+        class="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors whitespace-nowrap"
+        :class="activeTab === 'local-optimizer' ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'"
+        @click="activeTab = 'local-optimizer'"
+      >
+        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+        </svg>
+        <span>局部优化器</span>
       </button>
     </div>
 
@@ -219,6 +230,11 @@ function reset() {
     <!-- 面试辅助器 -->
     <div v-if="activeTab === 'interview'" class="space-y-6">
       <InterviewAssistant />
+    </div>
+
+    <!-- 局部优化器 -->
+    <div v-if="activeTab === 'local-optimizer'" class="space-y-6">
+      <LocalOptimizer />
     </div>
   </div>
 </template>

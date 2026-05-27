@@ -1,4 +1,4 @@
-import type { ApiResponse, OptimizeRequest, OptimizeResult, InterviewAnalyzeRequest, InterviewAnalysisResult, GenerateIntroductionRequest } from '@/types'
+import type { ApiResponse, OptimizeRequest, OptimizeResult, InterviewAnalyzeRequest, InterviewAnalysisResult, GenerateIntroductionRequest, LocalOptimizeRequest, LocalOptimizeResult } from '@/types'
 
 const API_BASE = '/api'
 /** 请求超时时间（毫秒） */
@@ -78,5 +78,37 @@ export async function sendResumeEmail(params: {
     return await res.json()
   } catch (e) {
     return { data: null, error: '网络请求失败，请检查连接' }
+  }
+}
+
+/** 调用云函数进行简历局部优化 */
+export async function localOptimize(
+  params: LocalOptimizeRequest,
+): Promise<ApiResponse<LocalOptimizeResult>> {
+  try {
+    const res = await fetch(`${API_BASE}/local-optimize`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT),
+    })
+    return await res.json()
+  } catch (e) {
+    return { data: null, error: '网络请求失败，请检查连接' }
+  }
+}
+
+/** 调用云函数解析 .doc 文件 */
+export async function parseDocFile(fileBase64: string): Promise<ApiResponse<{ text: string }>> {
+  try {
+    const res = await fetch(`${API_BASE}/parse-doc`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fileBase64 }),
+      signal: AbortSignal.timeout(30000),
+    })
+    return await res.json()
+  } catch (e) {
+    return { data: null, error: '文档解析失败，请确认文件格式正确' }
   }
 }

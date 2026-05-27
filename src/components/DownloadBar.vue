@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { sendResumeEmail, generateIntroduction } from '@/api'
+import { INTRODUCTION_SYSTEM_PROMPT } from '@/prompts/introduction'
 
 const props = defineProps<{
   text: string
@@ -35,6 +36,7 @@ async function generateSelfIntroduction() {
   const res = await generateIntroduction({
     text: props.text,
     model: (props.model as 'glm' | 'deepseek') || 'glm',
+    systemPrompt: INTRODUCTION_SYSTEM_PROMPT,
   })
 
   if (res.error) {

@@ -146,11 +146,11 @@ function parseResult(content) {
 }
 
 /* 核心优化函数 */
-async function optimizeResume({ text, goal, jd, model, env }) {
-  const systemPrompt = buildSystemPrompt(goal);
+async function optimizeResume({ text, goal, jd, model, env, systemPrompt }) {
+  const sp = systemPrompt || buildSystemPrompt(goal);
   const userPrompt = buildUserPrompt(text, jd);
   const caller = model === 'deepseek' ? callDeepSeek : callGLM;
-  const content = await caller(systemPrompt, userPrompt, env);
+  const content = await caller(sp, userPrompt, env);
   return parseResult(content);
 }
 
@@ -185,12 +185,23 @@ async function analyzeInterview({ systemPrompt, userPrompt, model, env }) {
 }
 
 /* 生成自我介绍 - 基于简历内容 */
-async function generateIntroduction({ text, model, env }) {
+async function generateIntroduction({ text, model, env, systemPrompt }) {
   const caller = model === 'deepseek' ? callDeepSeek : callGLM;
-  const systemPrompt = '你是资深面试辅导专家，擅长帮助候选人撰写精简有吸引力的自我介绍。\n\n任务：根据候选人简历内容，撰写一份适合面试场景的自我介绍。\n\n【要求】\n- 精简干练：控制在 1-2 分钟内能说完\n- 口语化：听起来自然流畅，不像是念稿\n- 容易记忆：有清晰的逻辑线索（如 过去→现在→未来）\n- 吸引面试官：开头有亮点，突出核心优势\n- 结构完整：包含开场、经历亮点、为什么适合该岗位、结尾\n\n【输出规范】\n- 直接输出自我介绍文本，不要额外说明\n- 用换行分隔段落，每段 2-3 句话\n- 全文不超过 300 字';
+  const defaultPrompt = '你是资深面试辅导专家，擅长帮助候选人撰写精简有吸引力的自我介绍。\n\n任务：根据候选人简历内容，撰写一份适合面试场景的自我介绍。\n\n【要求】\n- 精简干练：控制在 1-2 分钟内能说完\n- 口语化：听起来自然流畅，不像是念稿\n- 容易记忆：有清晰的逻辑线索（如 过去→现在→未来）\n- 吸引面试官：开头有亮点，突出核心优势\n- 结构完整：包含开场、经历亮点、为什么适合该岗位、结尾\n\n【输出规范】\n- 直接输出自我介绍文本，不要额外说明\n- 用换行分隔段落，每段 2-3 句话\n- 全文不超过 300 字';
+  const sp = systemPrompt || defaultPrompt;
   const userPrompt = `请根据以下简历内容，撰写一份面试自我介绍：\n\n${text}`;
   const content = await caller(systemPrompt, userPrompt, env);
   return { text: content.trim() };
 }
 
-export { optimizeResume, analyzeInterview, generateIntroduction };
+/* 简历局部优化 - 优化简历中的指定片段 */
+async function localOptimize({ text, requirement, model, env, systemPrompt }) {
+  const caller = model === 'deepseek' ? callDeepSeek : callGLM;
+  const defaultPrompt = '你是资深简历优化专家。用户会提供一段简历内容和优化需求，请根据需求进行定向优化。\n\n【通用原则】\n1. 强动词开头：主导/推动/重构/优化/设计/实现/搭建，禁用"负责/参与/协助"\n2. 成果量化：有数字用数字（提升XX%/节省XX万/覆盖XX用户），无数据用规模/频率/范围\n3. CAR结构：背景压力 → 个人行动 → 可验证结果\n4. 简洁：每条2-3句，每句≤25字，删除套话和空泛描述\n\n【输出规范】\n- 直接返回优化后的文本，不要添加任何解释或标记\n- 不要使用 markdown 格式\n- 用换行分隔不同的段落或条目';
+  const sp = systemPrompt || defaultPrompt;
+  const userPrompt = `简历内容：\n${text}\n\n优化需求：\n${requirement}`;
+  const content = await caller(sp, userPrompt, env);
+  return { optimizedText: content.trim() };
+}
+
+export { optimizeResume, analyzeInterview, generateIntroduction, localOptimize };

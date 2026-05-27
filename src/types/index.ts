@@ -30,13 +30,14 @@ export interface OptimizeRequest {
   goal: GoalType
   jd?: string
   model: ModelType
+  systemPrompt?: string
 }
 
 /** 简历解析结果 */
 export interface ParsedResult {
   text: string
   fileName: string
-  fileType: 'pdf' | 'docx'
+  fileType: 'pdf' | 'docx' | 'doc'
 }
 
 /** 页面步骤 */
@@ -68,4 +69,18 @@ export interface InterviewAnalyzeRequest {
 export interface GenerateIntroductionRequest {
   text: string
   model: ModelType
+  systemPrompt?: string
+}
+
+/** 局部优化请求参数 */
+export interface LocalOptimizeRequest {
+  text: string
+  requirement: string
+  model: ModelType
+  systemPrompt?: string
+}
+
+/** 局部优化结果 */
+export interface LocalOptimizeResult {
+  optimizedText: string
 }

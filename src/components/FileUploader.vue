@@ -5,6 +5,7 @@ const fileInput = ref<HTMLInputElement | null>(null)
 import * as pdfjsLib from 'pdfjs-dist'
 import mammoth from 'mammoth'
 import type { ParsedResult } from '@/types'
+import { parseDocFile } from '@/api'
 
 /* PDF.js worker 配置 */
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.js?url'
@@ -39,26 +40,59 @@ async function parseWord(file: File): Promise<string> {
   return result.value
 }
 
+/** 将 File 转换为 Base64 字符串 */
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = reader.result as string
+      resolve(result.split(',')[1])
+    }
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
 /** 处理上传的文件 */
 async function handleFile(file: File) {
   error.value = ''
   fileName.value = file.name
 
   const isPDF = file.name.endsWith('.pdf')
-  const isWord = file.name.endsWith('.docx') || file.name.endsWith('.doc')
+  const isDocx = file.name.endsWith('.docx')
+  const isDoc = file.name.endsWith('.doc')
 
-  if (!isPDF && !isWord) {
+  if (!isPDF && !isDocx && !isDoc) {
     error.value = '仅支持 PDF 和 Word（.docx / .doc）格式'
     return
   }
 
   isParsing.value = true
   try {
-    const text = isPDF ? await parsePDF(file) : await parseWord(file)
+    let text: string
+    let fileType: ParsedResult['fileType']
+
+    if (isPDF) {
+      text = await parsePDF(file)
+      fileType = 'pdf'
+    } else if (isDocx) {
+      text = await parseWord(file)
+      fileType = 'docx'
+    } else {
+      /* .doc 格式通过服务端解析 */
+      const base64 = await fileToBase64(file)
+      const res = await parseDocFile(base64)
+      if (res.error || !res.data) {
+        throw new Error(res.error || '解析失败')
+      }
+      text = res.data.text
+      fileType = 'doc'
+    }
+
     emit('parsed', {
       text,
       fileName: file.name,
-      fileType: isPDF ? 'pdf' : 'docx',
+      fileType,
     })
   } catch (e) {
     error.value = '文件解析失败，请确认文件格式正确'
