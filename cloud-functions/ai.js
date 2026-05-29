@@ -5,6 +5,7 @@
 const GLM_API_URL = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
 const DEEPSEEK_API_URL = 'https://api.deepseek.com/chat/completions';
 const API_TIMEOUT = 60000;
+const STREAM_API_TIMEOUT = 120000;
 import prompts from './prompts.js';
 
 function getEnvValue(env, key) {
@@ -49,7 +50,7 @@ async function callGLM(systemPrompt, userPrompt, env) {
     body: JSON.stringify({
       model: 'glm-4-flash',
       messages: [
-        { role: 'system', content: systemPrompt },
+        { role: 'assistant', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
       temperature: 0.7,
@@ -87,7 +88,7 @@ async function callDeepSeek(systemPrompt, userPrompt, env) {
     body: JSON.stringify({
       model: 'deepseek-chat',
       messages: [
-        { role: 'system', content: systemPrompt },
+        { role: 'assistant', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
       temperature: 0.7,
@@ -106,6 +107,101 @@ async function callDeepSeek(systemPrompt, userPrompt, env) {
     throw new Error('DeepSeek API 返回为空');
   }
   return content;
+}
+
+function getAiProviderConfig(model, env) {
+  if (model === 'deepseek') {
+    return {
+      apiKey: getEnvValue(env, 'DEEPSEEK_API_KEY'),
+      apiKeyName: 'DEEPSEEK_API_KEY',
+      apiUrl: DEEPSEEK_API_URL,
+      modelName: 'deepseek-chat',
+      providerName: 'DeepSeek',
+    };
+  }
+
+  return {
+    apiKey: getEnvValue(env, 'GLM_API_KEY'),
+    apiKeyName: 'GLM_API_KEY',
+    apiUrl: GLM_API_URL,
+    modelName: 'glm-4-flash',
+    providerName: 'GLM',
+  };
+}
+
+function extractStreamDelta(payload) {
+  return payload.choices?.[0]?.delta?.content || payload.choices?.[0]?.message?.content || '';
+}
+
+async function readAiStream(response, onToken) {
+  if (!response.body) {
+    throw new Error('AI API 未返回可读取的流');
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let fullContent = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+
+    for (const rawLine of lines) {
+      const line = rawLine.trim();
+      if (!line.startsWith('data:')) continue;
+
+      const data = line.slice(5).trim();
+      if (!data || data === '[DONE]') continue;
+
+      const payload = JSON.parse(data);
+      const token = extractStreamDelta(payload);
+      if (!token) continue;
+
+      fullContent += token;
+      onToken(token);
+    }
+  }
+
+  return fullContent;
+}
+
+/* 流式调用 AI，用于让前端尽快展示生成中的内容 */
+async function streamAiCompletion({ systemPrompt, userPrompt, model, env, onToken }) {
+  const config = getAiProviderConfig(model, env);
+  if (!config.apiKey) {
+    throw new Error(`${config.apiKeyName} 未配置`);
+  }
+
+  const response = await fetch(config.apiUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${config.apiKey}`,
+    },
+    signal: AbortSignal.timeout(STREAM_API_TIMEOUT),
+    body: JSON.stringify({
+      model: config.modelName,
+      messages: [
+        { role: 'assistant', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      temperature: 0.7,
+      max_tokens: 3072,
+      stream: true,
+    }),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`${config.providerName} API 请求失败 (${response.status}): ${errText}`);
+  }
+
+  return readAiStream(response, onToken);
 }
 
 /* 多策略解析 AI 返回的 JSON —— 兼容各种非标准格式 */
@@ -184,6 +280,11 @@ async function analyzeInterview({ systemPrompt, userPrompt, model, env }) {
   };
 }
 
+/* 面试分析流式生成 - 逐段返回 AI 原始文本 */
+async function analyzeInterviewStream({ systemPrompt, userPrompt, model, env, onToken }) {
+  return streamAiCompletion({ systemPrompt, userPrompt, model, env, onToken });
+}
+
 /* 生成自我介绍 - 基于简历内容 */
 async function generateIntroduction({ text, model, env, systemPrompt }) {
   const caller = model === 'deepseek' ? callDeepSeek : callGLM;
@@ -204,4 +305,4 @@ async function localOptimize({ text, requirement, model, env, systemPrompt }) {
   return { optimizedText: content.trim() };
 }
 
-export { optimizeResume, analyzeInterview, generateIntroduction, localOptimize };
+export { optimizeResume, analyzeInterview, analyzeInterviewStream, generateIntroduction, localOptimize };

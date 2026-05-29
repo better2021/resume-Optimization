@@ -16,8 +16,19 @@ const app = express();
 app.use(express.json({ limit: '10mb' }));
 
 /* 直接使用核心函数 */
-import { optimizeResume, analyzeInterview, generateIntroduction, localOptimize } from './ai.js';
+import { optimizeResume, analyzeInterview, analyzeInterviewStream, generateIntroduction, localOptimize } from './ai.js';
 import { sendEmail } from './email.js';
+
+/* 判断上游 AI 请求是否超时，用于返回更准确的 HTTP 状态码 */
+function isAiRequestTimeout(error) {
+  return error?.name === 'TimeoutError' || error?.message?.includes('aborted due to timeout');
+}
+
+/* 写入 SSE 事件，保证流式响应可以被前端逐段解析 */
+function writeStreamEvent(res, event, payload) {
+  res.write(`event: ${event}\n`);
+  res.write(`data: ${JSON.stringify(payload)}\n\n`);
+}
 
 /* 本地版 handleSendEmail（带参数校验） */
 async function handleSendEmail({ to, subject, text }) {
@@ -50,10 +61,29 @@ app.post('/api/send-email', async (req, res) => {
 
 app.post('/api/interview-analyze', async (req, res) => {
   try {
-    const { systemPrompt, userPrompt, model } = req.body;
+    const { systemPrompt, userPrompt, model, stream } = req.body;
     if (!systemPrompt || !userPrompt) {
       throw new Error('缺少 systemPrompt 或 userPrompt 参数');
     }
+
+    if (stream) {
+      res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+      res.setHeader('Cache-Control', 'no-cache, no-transform');
+      res.setHeader('Connection', 'keep-alive');
+      res.flushHeaders?.();
+
+      await analyzeInterviewStream({
+        systemPrompt,
+        userPrompt,
+        model: model || 'glm',
+        env: {},
+        onToken: token => writeStreamEvent(res, 'token', { token }),
+      });
+      writeStreamEvent(res, 'done', { success: true });
+      res.end();
+      return;
+    }
+
     const data = await analyzeInterview({
       systemPrompt,
       userPrompt,
@@ -63,7 +93,18 @@ app.post('/api/interview-analyze', async (req, res) => {
     res.json({ data, error: null });
   } catch (e) {
     console.error('[面试分析] 失败:', e.message);
-    res.status(500).json({ data: null, error: e.message });
+    const statusCode = isAiRequestTimeout(e) ? 504 : 500;
+    const errorMessage = isAiRequestTimeout(e)
+      ? 'AI 服务响应超时，请稍后重试或切换模型'
+      : e.message;
+
+    if (res.headersSent) {
+      writeStreamEvent(res, 'error', { error: errorMessage });
+      res.end();
+      return;
+    }
+
+    res.status(statusCode).json({ data: null, error: errorMessage });
   }
 });
 

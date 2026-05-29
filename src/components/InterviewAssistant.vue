@@ -3,8 +3,8 @@
  */
 <script setup lang="ts">
 import { ref, computed, onUnmounted } from 'vue'
-import type { ModelType, InterviewAnalysisResult } from '@/types'
-import { analyzeInterview } from '@/api'
+import type { ModelType, InterviewAnalysisResult, InterviewQuestion } from '@/types'
+import { analyzeInterviewStream } from '@/api'
 import { INTERVIEW_SYSTEM_PROMPT, buildInterviewUserPrompt } from '@/prompts/interview'
 
 /** 最大截图上传数量 */
@@ -22,6 +22,7 @@ const selectedModel = ref<ModelType>('glm')
 const isLoading = ref(false)
 const result = ref<InterviewAnalysisResult | null>(null)
 const errorMsg = ref('')
+const rawStreamingText = ref('')
 const isDownloading = ref(false)
 const resultRef = ref<HTMLElement | null>(null)
 
@@ -67,6 +68,55 @@ function onDrop(e: DragEvent) {
   files.forEach(handleImageUpload)
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function readStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return value.filter((item): item is string => typeof item === 'string')
+}
+
+function readQuestions(value: unknown): InterviewQuestion[] {
+  if (!Array.isArray(value)) return []
+  return value
+    .filter(isRecord)
+    .map(item => ({
+      question: typeof item.question === 'string' ? item.question : '',
+      preparation: typeof item.preparation === 'string' ? item.preparation : '',
+      example: typeof item.example === 'string' ? item.example : '',
+    }))
+    .filter(item => item.question)
+}
+
+function extractJsonText(content: string): string {
+  const codeBlockMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/)
+  if (codeBlockMatch) return codeBlockMatch[1].trim()
+
+  const firstBrace = content.indexOf('{')
+  const lastBrace = content.lastIndexOf('}')
+  if (firstBrace !== -1 && lastBrace > firstBrace) {
+    return content.slice(firstBrace, lastBrace + 1).replace(/,\s*([}\]])/g, '$1')
+  }
+
+  return content.trim()
+}
+
+/** 将 AI 流式原文解析为页面使用的面试分析结构 */
+function parseInterviewAnalysis(content: string): InterviewAnalysisResult {
+  const parsed: unknown = JSON.parse(extractJsonText(content))
+  if (!isRecord(parsed)) {
+    throw new Error('AI 返回内容不是有效对象')
+  }
+
+  return {
+    summary: typeof parsed.summary === 'string' ? parsed.summary : '',
+    requirements: readStringArray(parsed.requirements),
+    questions: readQuestions(parsed.questions),
+    suggestions: readStringArray(parsed.suggestions),
+  }
+}
+
 /** 调用 AI 进行面试分析 */
 async function doAnalyze() {
   if (!jdText.value.trim() && images.value.length === 0) {
@@ -77,21 +127,30 @@ async function doAnalyze() {
   isLoading.value = true
   errorMsg.value = ''
   result.value = null
+  rawStreamingText.value = ''
 
   const textToAnalyze = jdText.value.trim() || '(用户上传了 JD 截图但未提供文本，请提示输入文本格式的 JD 以获得完整分析)'
   const systemPrompt = INTERVIEW_SYSTEM_PROMPT
   const userPrompt = buildInterviewUserPrompt(textToAnalyze)
 
-  const res = await analyzeInterview({
+  const res = await analyzeInterviewStream({
     systemPrompt,
     userPrompt,
     model: selectedModel.value,
+  }, {
+    onToken: token => {
+      rawStreamingText.value += token
+    },
   })
 
   if (res.error) {
     errorMsg.value = res.error
-  } else if (res.data) {
-    result.value = res.data
+  } else if (res.data?.text) {
+    try {
+      result.value = parseInterviewAnalysis(res.data.text)
+    } catch (e) {
+      errorMsg.value = 'AI 已生成内容，但 JSON 格式解析失败，请重试'
+    }
   }
 
   isLoading.value = false
@@ -104,6 +163,7 @@ function reset() {
   images.value = []
   result.value = null
   errorMsg.value = ''
+  rawStreamingText.value = ''
 }
 
 /* 构建 Markdown 内容 */
@@ -316,6 +376,18 @@ onUnmounted(() => {
 
       <!-- 错误提示 -->
       <p v-if="errorMsg" class="text-red-500 text-sm text-center">{{ errorMsg }}</p>
+
+      <!-- 流式生成原文 -->
+      <div
+        v-if="rawStreamingText"
+        class="border border-blue-100 bg-blue-50 rounded-lg p-4 space-y-2"
+      >
+        <div class="flex items-center justify-between">
+          <p class="text-sm font-medium text-blue-800">正在生成</p>
+          <span v-if="isLoading" class="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></span>
+        </div>
+        <pre class="text-sm text-blue-900 leading-relaxed whitespace-pre-wrap font-sans">{{ rawStreamingText }}</pre>
+      </div>
 
       <p class="text-xs text-gray-400 text-center">
         支持输入 JD 文本或上传 JD 截图（或两者同时提供），AI 将综合分析
