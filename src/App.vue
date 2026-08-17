@@ -22,7 +22,7 @@ const fileName = ref('')
 /* 优化选项 */
 const selectedGoal = ref<GoalType>('highlight-achievements')
 const jdText = ref('')
-const selectedModel = ref<ModelType>('glm')
+const selectedModel = ref<ModelType>('deepseek')
 
 /* 优化结果 */
 const isOptimizing = ref(false)

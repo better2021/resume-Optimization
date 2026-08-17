@@ -16,7 +16,7 @@ const isDragging = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
 
 /* 模型选择 */
-const selectedModel = ref<ModelType>('glm')
+const selectedModel = ref<ModelType>('deepseek')
 
 /* 分析状态 */
 const isLoading = ref(false)

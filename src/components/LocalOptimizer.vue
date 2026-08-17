@@ -5,7 +5,7 @@ import { localOptimize } from '@/api'
 
 const resumeText = ref('')
 const requirement = ref('')
-const selectedModel = ref<ModelType>('glm')
+const selectedModel = ref<ModelType>('deepseek')
 const isOptimizing = ref(false)
 const result = ref('')
 const errorMsg = ref('')

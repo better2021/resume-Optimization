@@ -35,7 +35,7 @@ async function generateSelfIntroduction() {
 
   const res = await generateIntroduction({
     text: props.text,
-    model: (props.model as 'glm' | 'deepseek') || 'glm',
+    model: (props.model as 'glm' | 'deepseek') || 'deepseek',
     systemPrompt: INTRODUCTION_SYSTEM_PROMPT,
   })
 
